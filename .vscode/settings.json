@@ -1,0 +1,17 @@
+{
+    "workbench.colorCustomizations": {
+        "tree.indentGuidesStroke": "#00ff00",
+        "[Default Dark+]": {
+            "editor.lineHighlightBackground": "#1E1E1EAA"
+        },
+        "[Dracula]": {
+            "editor.lineHighlightBackground": "#282a36"
+        },
+        "[SynthWave '84]": {
+            "editor.lineHighlightBackground": "#282a36"
+        },
+        "activityBar.background": "#580F35",
+        "titleBar.activeBackground": "#7B154A",
+        "titleBar.activeForeground": "#FEFCFD"
+    }
+}

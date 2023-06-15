@@ -3,6 +3,7 @@
 This will allow you to quickly and easily create the wiggle photos made with Nimslo and Nishika cameras. Drag and drop your images, align the focal point and then your gif will be created.
 
 # Todo:
+- [ ] Do a browser check to make sure the browser is compatible.
 - [ ] Create the drag and drop ingress point instead of pulling images 1,2,3,4 
 - [ ] Create the 'cropbox' which will be a resizable box that will allow user to crop the gif
 - [ ] Write the code to generate the gif

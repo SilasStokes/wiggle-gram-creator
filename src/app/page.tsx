@@ -3,10 +3,11 @@
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 // import { Draggable } from "./Draggable";
-import Draggable1 from "react-draggable";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import { writeFile } from "fs/promises";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
+import PhotoCanvas from "./PhotoCanvas";
+import Cropper from "react-easy-crop";
 
 //  ffmpeg -framerate 1 -pattern_type glob -i '*.JPG' -c:v libx264 -r 30 -pix_fmt yuv420p out.mp4
 
@@ -17,6 +18,8 @@ type photo = {
   y: number;
   opacity: number;
   active: boolean;
+  height: number;
+  width: number;
 };
 
 type cropBox = {
@@ -24,6 +27,7 @@ type cropBox = {
   y: number;
   width: number;
   height: number;
+  active: boolean;
 };
 
 const grid = 8;
@@ -48,12 +52,12 @@ const getListStyle = (isDraggingOver: boolean) => ({
   overflow: "auto",
 });
 
-const imgPaths = [
-  "/images/1.JPG",
-  "/images/2.JPG",
-  "/images/3.JPG",
-  "/images/4.JPG",
-];
+// const imgPaths = [
+//   "/images/1.JPG",
+//   "/images/2.JPG",
+//   "/images/3.JPG",
+//   "/images/4.JPG",
+// ];
 
 const reorder = (list: photo[], startIndex: number, endIndex: number) => {
   const result = Array.from(list);
@@ -69,16 +73,16 @@ const ffmpeg = createFFmpeg({
 export default function Home() {
   // console.log('home reloaded')
   // const [items, setItems] = useState({ items: getItems(6) });
-  const [photos, setPhotos] = useState<photo[]>(
-    imgPaths.map((src, index) => ({
-      src,
-      index,
-      x: 0,
-      y: 0,
-      opacity: 0.5,
-      active: false,
-    }))
-  );
+  const [photos, setPhotos] = useState<photo[] | null>(null);
+
+  const [cropBox, setCropBox] = useState<cropBox>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    active: false,
+  });
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [video, setVideo] = useState<string | null>(null);
   useEffect(() => {
@@ -86,18 +90,12 @@ export default function Home() {
       await ffmpeg.load();
     };
     loadFFmpeg();
-    setPhotos((oldPhotos) => {
-      const newPhotos = [...oldPhotos];
-      newPhotos[0].opacity = 1.0;
-      newPhotos[0].active = true;
-      return newPhotos;
-    });
   }, []);
 
   function setOpacity(index: number, value: number) {
     console.log("setOpacity on index: ", index, " to value: ", value);
     setPhotos((oldPhotos) => {
-      const newPhotos = [...oldPhotos];
+      const newPhotos = [...oldPhotos!];
       newPhotos[index].opacity = value;
       return newPhotos;
     });
@@ -106,7 +104,7 @@ export default function Home() {
   function setActive(index: number, value: boolean) {
     console.log("setActive on index: ", index);
     setPhotos((oldPhotos) => {
-      const newPhotos = [...oldPhotos];
+      const newPhotos = [...oldPhotos!];
       newPhotos[index].active = newPhotos[index].active ? false : true;
       return newPhotos;
     });
@@ -114,7 +112,7 @@ export default function Home() {
 
   function findTopActivePhoto() {
     let topActivePhoto = 0;
-    photos.forEach((photo) => {
+    photos?.forEach((photo) => {
       if (photo.active && photo.index > topActivePhoto) {
         topActivePhoto = photo.index;
       }
@@ -138,25 +136,12 @@ export default function Home() {
   async function compilePhotoToVid(event: any): Promise<void> {
     console.log("compilePhotoToVid");
     console.log(event);
-    for (let i = 0; i < photos.length; i++) {
-      ffmpeg.FS("writeFile", `file${i}.jpg`, await fetchFile(photos[i].src));
+    for (let i = 0; i < photos!.length; i++) {
+      ffmpeg.FS("writeFile", `file${i}.jpg`, await fetchFile(photos![i].src));
     }
-    ffmpeg.FS("writeFile", `file${4}.jpg`, await fetchFile(photos[2].src));
-    ffmpeg.FS("writeFile", `file${5}.jpg`, await fetchFile(photos[1].src));
+    ffmpeg.FS("writeFile", `file${4}.jpg`, await fetchFile(photos![2].src));
+    ffmpeg.FS("writeFile", `file${5}.jpg`, await fetchFile(photos![1].src));
 
-    for (let i = 0; i < photos.length; i++) {
-      ffmpeg.FS("writeFile", `file${i + 6}.jpg`, await fetchFile(photos[i].src));
-    }
-    ffmpeg.FS("writeFile", `file${10}.jpg`, await fetchFile(photos[2].src));
-    ffmpeg.FS("writeFile", `file${11}.jpg`, await fetchFile(photos[1].src));
-
-    // for (let i = 0; i < photos.length; i++) {
-    //   ffmpeg.FS("writeFile", `file${i}.jpg`, await fetchFile(photos[i].src));
-    // }
-    // ffmpeg.FS("writeFile", `file${16}.jpg`, await fetchFile(photos[2].src));
-    // ffmpeg.FS("writeFile", `file${17}.jpg`, await fetchFile(photos[1].src));
-    // it don't like these params
-    // await ffmpeg.run( '-framerate', '1', '-pattern_type', 'glob', '-i', 'file%d.jpg', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', 'out.mp4');
     await ffmpeg.run(
       "-start_number",
       "0",
@@ -166,13 +151,10 @@ export default function Home() {
       "1",
       "-t",
       "30",
-      // "-pattern_type",
-      // "glob",
       "-i",
       "file%d.jpg",
       "-vf",
       "format=yuv420p",
-      // "scale=320:-1",
       "out.mp4"
     );
     const data = ffmpeg.FS("readFile", "out.mp4");
@@ -193,6 +175,7 @@ export default function Home() {
       const src = URL.createObjectURL(file);
       console.log(`file ${i} source set to: `);
       console.log(src);
+      // const img = new Image();
 
       newPhotos.push({
         src,
@@ -201,6 +184,8 @@ export default function Home() {
         y: 0,
         opacity: 0.5,
         active: false,
+        height: 0,
+        width: 0,
       });
     }
     newPhotos[0].opacity = 1.0;
@@ -209,46 +194,35 @@ export default function Home() {
   }
 
   return (
-    <main className="flex flex-col items-center">
-      <input type="file" multiple onChange={userUploadedPhotos} />
+    <main className="flex flex-col items-center ">
+      <button
+        onClick={(e) => {
+          console.log("cropBox active: ", !cropBox.active);
+          setCropBox((prev) => ({ ...prev, active: !prev.active }));
+        }}
+      >
+        Turn on cropBox
+      </button>
       {/* this is for layered opacity photos. 
           TODO: make the height relative to the image, and then give it a 100px buffer for moving it */}
-      <PhotoCanvas photos={photos} />
-      <span>{`moving index ${findTopActivePhoto()}`}</span>
-      <Carousel
+      <PhotoCanvas
+        userUploadedPhotos={userUploadedPhotos}
         photos={photos}
-        onPhotoDragEnd={onPhotoDragEnd}
-        setOpacity={setOpacity}
-        setActive={setActive}
+        setPhotos={setPhotos}
       />
+      <span>{`moving index ${findTopActivePhoto()}`}</span>
+      {photos && (
+        <Carousel
+          photos={photos}
+          onPhotoDragEnd={onPhotoDragEnd}
+          setOpacity={setOpacity}
+          setActive={setActive}
+        />
+      )}
       {/* create button that will initiate the gif creation */}
       <button onClick={compilePhotoToVid}>create gif</button>
       {video && <video src={video} controls></video>}
     </main>
-  );
-}
-
-function PhotoCanvas({ photos }: { photos: photo[] }) {
-  return (
-    <div className="relative h-[600px] w-[400px]">
-      {photos.map((photo) => {
-        return (
-          photo.active && (
-            <Draggable1 key={photo.src}>
-              <Image
-                className={`absolute top-0 z-[${photo.index}]`}
-                src={photo.src}
-                alt="image"
-                width={400}
-                height={400}
-                draggable={false}
-                style={{ opacity: photo.opacity }}
-              />
-            </Draggable1>
-          )
-        );
-      })}
-    </div>
   );
 }
 

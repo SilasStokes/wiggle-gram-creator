@@ -6,8 +6,15 @@ This will allow you to quickly and easily create the wiggle photos made with Nim
 - [ ] Do a browser check to make sure the browser is compatible.
 - [ ] Create the drag and drop ingress point instead of pulling images 1,2,3,4 
 - [ ] Create the 'cropbox' which will be a resizable box that will allow user to crop the gif
-- [ ] Write the code to generate the gif
 - [ ] Allow cmd+zoom onto the main images
 - [ ] Let an image be chosen in the carousel for the moving index
 - [ ] give each image a discernable border so it's obvious for the cropbox
 - [ ] fix the typescript errors
+- [ ] give output file names fun generated names
+
+## Today:
+- [ ] research canvas. 
+- [ ] try to figure out the crop part of ffmpeg. 
+
+## Done:
+- [x] Write the code to generate the gif

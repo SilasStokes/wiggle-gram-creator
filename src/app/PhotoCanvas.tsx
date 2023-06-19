@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Draggable from "react-draggable";
+import CropBox from "./CropBox";
 import { useState, useEffect } from "react";
 
 type photo = {
@@ -11,8 +12,10 @@ type photo = {
   y: number;
   opacity: number;
   active: boolean;
-  height: number;
-  width: number;
+  actualHeight: number;
+  actualWidth: number;
+  renderedHeight: number;
+  renderedWidth: number;
 };
 
 type cropBox = {
@@ -27,17 +30,17 @@ export default function PhotoCanvas({
   photos,
   userUploadedPhotos,
   setPhotos,
+  cropBox,
+  setCropBox,
 }: {
   photos: photo[] | null;
   userUploadedPhotos: any;
   setPhotos: any;
+  cropBox: cropBox;
+  setCropBox: any;
 }) {
-
   const [initialOffset, setInitialOffset] = useState({ x: 0, y: 0 });
   // 2048 x 2905
-  useEffect(() => {
-    // const;
-  }, [photos]);
 
   if (!photos) {
     return (
@@ -49,9 +52,8 @@ export default function PhotoCanvas({
 
   return (
     <div className="relative h-[600px] w-[600px] bg-slate-300">
-
-      {/* <div className="relative h-[600px] w-[600px] bg-slate-300"> */}
-      {photos.map((photo) => {
+      <CropBox cropBox={cropBox} setCropBox={setCropBox} />
+      { photos.map((photo) => {
         return (
           photo.active && (
             <Draggable
@@ -65,12 +67,12 @@ export default function PhotoCanvas({
               // }}
               onStop={(e, data) => {
                 e.preventDefault();
-                console.log("dragging stop: ");
-                console.log(data);
-                console.log(e);
-                const{ x, y } = data;
-                console.log(`x: ${x}, y: ${y}`);
-                
+                // console.log("dragging stop: ");
+                // console.log(data);
+                // console.log(e);
+                const { x, y } = data;
+                // console.log(`x: ${x}, y: ${y}`);
+
                 setPhotos((prev: photo[]) => {
                   return prev.map((p: photo) => {
                     if (p.src === photo.src) {
@@ -82,26 +84,23 @@ export default function PhotoCanvas({
                     }
                     return p;
                   });
-                }
-                );
+                });
               }}
             >
-              {/* // left-[${
-                //   (600/2) - (photo.width / 2)
-                // }px]  */}
               <Image
-                className={`absolute`}
+                // className={`absolute`}
                 src={photo.src}
                 alt="image"
                 // style={{objectFit: "contain"}}
                 // fill={true}
-                width={photo.width}
-                height={photo.height}
+                width={photo.renderedWidth}
+                height={photo.renderedHeight}
                 draggable={false}
                 // style={{ opacity: photo.opacity, objectFit: "contain" }}
                 style={{
+                  position: "absolute",
                   opacity: photo.opacity,
-                  height: photo.height,
+                  height: photo.renderedHeight,
                   width: "auto",
                   left: initialOffset.x,
                   top: initialOffset.y,
@@ -121,20 +120,31 @@ export default function PhotoCanvas({
 
                   const newWidth = newHeight * aspectRatio;
                   console.log("new width: " + newWidth);
-                  setInitialOffset({
-                    x: 300 - newWidth / 2,
-                    y: 50,
-                  });
+                  const xOffset = 300 - newWidth / 2;
+                  const yOffset = 50;
+
+                  if (initialOffset.x === 0 && initialOffset.y === 0) {
+                    setInitialOffset({
+                      x: xOffset,
+                      y: yOffset,
+                    });
+                    // setCropBox(() => {width: newWidth, height: newHeight, x: xOffset, y: yOffset})
+                    // setCropBox(prev=>
+                    //   ({ ...prev, width: newWidth, height: newHeight, x: 300 - newWidth / 2, y: 50 });
+                    // );
+                  }
 
                   setPhotos((prev: photo[]) => {
                     return prev.map((p: photo) => {
                       if (p.src === photo.src) {
                         return {
                           ...p,
-                          height: newHeight,
-                          width: newWidth,
-                          x: 300 - newWidth / 2,
-                          y: 50,
+                          renderedHeight: newHeight,
+                          renderedWidth: newWidth,
+                          actualHeight: naturalHeight,
+                          actualWidth: naturalWidth,
+                          x: xOffset,
+                          y: yOffset,
                         };
                       }
                       return p;

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 // import { Draggable } from "./Draggable";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable, DraggingStyle, NotDraggingStyle } from "react-beautiful-dnd";
 import { writeFile } from "fs/promises";
 import { createFFmpeg, fetchFile } from "@ffmpeg/ffmpeg";
 import PhotoCanvas from "./PhotoCanvas";
@@ -18,8 +18,10 @@ type photo = {
   y: number;
   opacity: number;
   active: boolean;
-  height: number;
-  width: number;
+  actualHeight: number;
+  actualWidth: number;
+  renderedHeight: number;
+  renderedWidth: number;
 };
 
 type cropBox = {
@@ -32,7 +34,7 @@ type cropBox = {
 
 const grid = 8;
 
-const getItemStyle = (isDragging, draggableStyle) => ({
+const getItemStyle = (isDragging: boolean, draggableStyle: DraggingStyle | NotDraggingStyle | undefined) => ({
   // some basic styles to make the items look a bit nicer
   userSelect: "none",
   padding: grid * 2,
@@ -51,13 +53,6 @@ const getListStyle = (isDraggingOver: boolean) => ({
   padding: grid,
   overflow: "auto",
 });
-
-// const imgPaths = [
-//   "/images/1.JPG",
-//   "/images/2.JPG",
-//   "/images/3.JPG",
-//   "/images/4.JPG",
-// ];
 
 const reorder = (list: photo[], startIndex: number, endIndex: number) => {
   const result = Array.from(list);
@@ -78,10 +73,12 @@ export default function Home() {
   const [cropBox, setCropBox] = useState<cropBox>({
     x: 0,
     y: 0,
-    width: 0,
-    height: 0,
+    width: 500,
+    height: 550,
     active: false,
   });
+
+  const [croppedPhotos, setCroppedPhotos] = useState<any>([]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [video, setVideo] = useState<string | null>(null);
@@ -135,12 +132,73 @@ export default function Home() {
   }
   async function compilePhotoToVid(event: any): Promise<void> {
     console.log("compilePhotoToVid");
-    console.log(event);
+
     for (let i = 0; i < photos!.length; i++) {
       ffmpeg.FS("writeFile", `file${i}.jpg`, await fetchFile(photos![i].src));
     }
-    ffmpeg.FS("writeFile", `file${4}.jpg`, await fetchFile(photos![2].src));
-    ffmpeg.FS("writeFile", `file${5}.jpg`, await fetchFile(photos![1].src));
+
+
+    // ffmpeg needs the x and y INTO the photo, so we need to find what that is relative to the parent and cropbox
+    console.log("cropBox: ", cropBox);
+    // {x: 158, y: 151, width: '261px', height: '305px', active: true}
+    //   {
+    //     "index": 0,
+    //     "x": 123.75215146299482,
+    //     "y": 50,
+    //     "opacity": 1,
+    //     "active": true,
+    //     "renderedHeight": 500,
+    //     "renderedWidth": 352.49569707401037
+    // }
+    const indexes = [0, 1, 2, 3, 2, 1]
+    let writeIndex = 0;
+    for (const i of indexes) {
+    // for (let i = 0; i < photos!.length; i++) {
+      const photo = photos![i];
+      // console.log(`photo${i}: `, photo);
+      const scaleFactor = photo.actualWidth / photo.renderedWidth;
+      console.log(`scaleFactor: ${scaleFactor}`)
+      const scaledPhotoX = photo.x * scaleFactor;
+      const scaledPhotoY = photo.y * scaleFactor;
+      console.log(`scaledPhotoX: ${scaledPhotoX}, scaledPhotoY: ${scaledPhotoY}`)
+
+      const scaledCropboxX = cropBox.x * scaleFactor;
+      const scaledCropboxY = cropBox.y * scaleFactor;
+      console.log(`scaledCropboxX: ${scaledCropboxX}, scaledCropboxY: ${scaledCropboxY}`)
+
+
+      const cropx = Math.floor(scaledCropboxX - scaledPhotoX);
+      const cropy = Math.floor(scaledCropboxY - scaledPhotoY);
+      console.log(`cropx: ${cropx}, cropy: ${cropy}`)
+
+
+      let scaledCropboxWidth = Math.floor(cropBox.width * scaleFactor);
+      scaledCropboxWidth = scaledCropboxWidth % 2 === 0 ? scaledCropboxWidth : scaledCropboxWidth - 1;
+      let scaledCropboxHeight = Math.floor(cropBox.height * scaleFactor);
+      scaledCropboxHeight = scaledCropboxHeight % 2 === 0 ? scaledCropboxHeight : scaledCropboxHeight - 1;
+      console.log(`scaledCropboxWidth: ${scaledCropboxWidth}, scaledCropboxHeight: ${scaledCropboxHeight}`)
+
+      // console.log(`scaledCropboxWidth: ${scaledCropboxWidth}, scaledCropboxHeight: ${scaledCropboxHeight}, cropx: ${cropx}, cropy: ${cropy}`);
+      
+      await ffmpeg.run(
+        "-i",
+        `file${i}.jpg`,
+        '-vf',
+        `crop=${scaledCropboxWidth}:${scaledCropboxHeight}:${cropx}:${cropy}`,
+        `cropped${writeIndex++}.jpg`
+      );
+      // const data = ffmpeg.FS("readFile", `cropped${i}.jpg`);
+      // const url = URL.createObjectURL(
+      //   new Blob([data.buffer], { type: "image/jpg" })
+      // );
+      // setCroppedPhotos((prev: any) => [...prev, url]);
+    }
+
+    // for (let i = 0; i < photos!.length; i++) {
+    //   ffmpeg.FS("writeFile", `file${i}.jpg`, await fetchFile(photos![i].src));
+    // }
+    // ffmpeg.FS("writeFile", `cropped${4}.jpg`, await fetchFile(`cropped${2}.jpg`));
+    // ffmpeg.FS("writeFile", `cropped${5}.jpg`, await fetchFile(`cropped${1}.jpg`));
 
     await ffmpeg.run(
       "-start_number",
@@ -150,9 +208,9 @@ export default function Home() {
       "-loop",
       "1",
       "-t",
-      "30",
+      "10",
       "-i",
-      "file%d.jpg",
+      "cropped%d.jpg",
       "-vf",
       "format=yuv420p",
       "out.mp4"
@@ -184,8 +242,10 @@ export default function Home() {
         y: 0,
         opacity: 0.5,
         active: false,
-        height: 0,
-        width: 0,
+        renderedHeight: 0,
+        renderedWidth: 0,
+        actualHeight: 0,
+        actualWidth: 0,
       });
     }
     newPhotos[0].opacity = 1.0;
@@ -203,12 +263,12 @@ export default function Home() {
       >
         Turn on cropBox
       </button>
-      {/* this is for layered opacity photos. 
-          TODO: make the height relative to the image, and then give it a 100px buffer for moving it */}
       <PhotoCanvas
         userUploadedPhotos={userUploadedPhotos}
         photos={photos}
         setPhotos={setPhotos}
+        cropBox={cropBox}
+        setCropBox={setCropBox}
       />
       <span>{`moving index ${findTopActivePhoto()}`}</span>
       {photos && (
@@ -219,9 +279,11 @@ export default function Home() {
           setActive={setActive}
         />
       )}
-      {/* create button that will initiate the gif creation */}
       <button onClick={compilePhotoToVid}>create gif</button>
       {video && <video src={video} controls></video>}
+      {/* {croppedPhotos && croppedPhotos.map((photo: any) => {
+        return <img key={photo} src={photo} />
+      })} */}
     </main>
   );
 }

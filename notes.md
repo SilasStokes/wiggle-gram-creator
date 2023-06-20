@@ -1,4 +1,10 @@
 
+inspo for UI:
+https://www.youtube.com/watch?v=k0oQr7ZVtBQ
+some codepens i found:
+https://codepen.io/hlfcoding/pen/oXpWOV
+https://codepen.io/hlfcoding/pen/poEWZL
+
 # ffmpeg:
 salient commands:
 identify *.JPG

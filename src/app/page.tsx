@@ -34,18 +34,18 @@ type cropBox = {
 
 const grid = 8;
 
-const getItemStyle = (isDragging: boolean, draggableStyle: DraggingStyle | NotDraggingStyle | undefined) => ({
-  // some basic styles to make the items look a bit nicer
-  userSelect: "none",
-  padding: grid * 2,
-  margin: `0 ${grid}px 0 0`,
+// const getItemStyle = (isDragging: boolean, draggableStyle: DraggingStyle | NotDraggingStyle | undefined) => ({
+//   // some basic styles to make the items look a bit nicer
+//   userSelect: "none",
+//   padding: grid * 2,
+//   margin: `0 ${grid}px 0 0`,
 
-  // change background colour if dragging
-  background: isDragging ? "lightgreen" : "grey",
+//   // change background colour if dragging
+//   background: isDragging ? "lightgreen" : "grey",
 
-  // styles we need to apply on draggables
-  ...draggableStyle,
-});
+//   // styles we need to apply on draggables
+//   ...draggableStyle,
+// });
 
 const getListStyle = (isDraggingOver: boolean) => ({
   background: isDraggingOver ? "lightblue" : "lightgrey",
@@ -122,7 +122,7 @@ export default function Home() {
       return;
     }
     setPhotos((oldPhotos) => {
-      const newPhotos = [...oldPhotos];
+      const newPhotos = [...oldPhotos!];
       newPhotos[result.source.index].index = result.destination.index;
       newPhotos[result.destination.index].index = result.source.index;
       const [removed] = newPhotos.splice(result.source.index, 1);
@@ -299,6 +299,18 @@ function Carousel({
   setOpacity: any;
   setActive: any;
 }) {
+// const getItemStyle = (isDragging: boolean, draggableStyle: DraggingStyle | NotDraggingStyle | undefined) => ({
+//   // some basic styles to make the items look a bit nicer
+//   userSelect: "none",
+//   padding: grid * 2,
+//   margin: `0 ${grid}px 0 0`,
+
+//   // change background colour if dragging
+//   background: isDragging ? "lightgreen" : "grey",
+
+//   // styles we need to apply on draggables
+//   ...draggableStyle,
+// });
   return (
     <div /* this is for the 1-4 image previews + opacity sliders */
       className="mt-4"
@@ -322,10 +334,18 @@ function Carousel({
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      style={getItemStyle(
-                        snapshot.isDragging,
-                        provided.draggableProps.style
-                      )}
+                      style={{
+                        userSelect: "none",
+                        padding: grid * 2,
+                        margin: `0 ${grid}px 0 0`,
+                        // change background colour if dragging
+                        background: snapshot.isDragging
+                          ? "lightgreen"
+                          : "grey",
+                        // styles we need to apply on draggables
+                        ...provided.draggableProps.style,
+
+                      }}
                     >
                       <CarouselImage
                         photo={photo}
